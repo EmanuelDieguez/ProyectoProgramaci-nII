@@ -1,0 +1,9 @@
+Se implementó el registro de múltiples números de teléfono por cliente.
+
+En la base de datos se creó la tabla telefono_cliente, que almacena el número y el tipo de cada teléfono (Celular, Casa, Trabajo u Otro) y se relaciona con la tabla cliente mediante una llave foránea. La tabla impide que un mismo cliente tenga números repetidos y borra automáticamente los teléfonos cuando se elimina el cliente. El script de migración también copió a esta tabla el teléfono que cada cliente ya tenía registrado.
+
+En el código se agregó la clase TelefonoCliente en el paquete modelo y las clases TelefonoClienteDAO y TelefonoClienteDAOImpl en el paquete dao, que permiten insertar, eliminar y consultar los teléfonos. La clase Cliente ahora contiene una lista de teléfonos e incluye métodos para agregar un teléfono, obtener el principal y mostrar todos los números como texto. La clase ClienteDAOImpl se modificó para guardar, cargar, actualizar y eliminar los teléfonos junto con el cliente dentro de una misma transacción. El primer número de la lista se sigue guardando en la tabla persona como teléfono principal, para no afectar el resto del sistema.
+
+En la interfaz, la ventana de Clientes tiene una nueva sección de teléfonos con un campo para el número, una lista para elegir el tipo, los botones Agregar teléfono y Quitar teléfono, y una lista con los números del cliente. Antes de agregar un número, la ventana valida que tenga entre 8 y 20 caracteres y que no esté repetido. La tabla de clientes muestra todos los números registrados.
+
+Por último, se agregó la clase PruebaTelefonos, que verifica el guardado, la consulta, la actualización y la eliminación de los teléfonos sin necesidad de abrir la interfaz.

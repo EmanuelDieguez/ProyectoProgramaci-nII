@@ -27,7 +27,6 @@ public class SistemaVentas {
                     break;
                 }
             }
-            
         } catch (Exception e) {
             // Si Nimbus no está disponible se usa la apariencia por defecto
         }

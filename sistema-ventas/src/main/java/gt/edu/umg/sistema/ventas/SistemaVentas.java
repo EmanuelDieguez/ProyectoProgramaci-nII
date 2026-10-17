@@ -1,5 +1,5 @@
 package gt.edu.umg.sistema.ventas;
-
+//Nooooooo
 import gt.edu.umg.sistema.ventas.vista.VentanaPrincipal;
 
 import javax.swing.*;

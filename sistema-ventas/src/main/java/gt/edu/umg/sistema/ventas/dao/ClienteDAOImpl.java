@@ -1,24 +1,28 @@
 package gt.edu.umg.sistema.ventas.dao;
 
 import gt.edu.umg.sistema.ventas.modelo.Cliente;
+import gt.edu.umg.sistema.ventas.modelo.TelefonoCliente;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class ClienteDAOImpl implements ClienteDAO {
 
     private static final String SELECT = "SELECT p.id, p.nombre, p.nit, p.telefono, c.direccion "
             + "FROM persona p JOIN cliente c ON p.id = c.id ";
 
+    private final TelefonoClienteDAO telefonoDAO = new TelefonoClienteDAOImpl();
+
     @Override
     public void guardar(Cliente c) {
-        // persona + cliente en la misma transacción
+        // persona + cliente + teléfonos en la misma transacción
         Transaccion.ejecutar("guardar el cliente", con -> {
             String sqlPersona = "INSERT INTO persona (nombre, nit, telefono, tipo) VALUES (?,?,?,'CLIENTE')";
             try (PreparedStatement ps = con.prepareStatement(sqlPersona, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, c.getNombre());
                 ps.setString(2, c.getNit());
-                ps.setString(3, c.getTelefono());
+                ps.setString(3, c.getTelefonoPrincipal());
                 ps.executeUpdate();
                 c.setId(JdbcUtil.idGenerado(ps));
             }
@@ -27,6 +31,7 @@ public class ClienteDAOImpl implements ClienteDAO {
                 ps.setString(2, c.getDireccion());
                 ps.executeUpdate();
             }
+            guardarTelefonos(con, c);
             return null;
         });
     }
@@ -34,12 +39,19 @@ public class ClienteDAOImpl implements ClienteDAO {
     @Override
     public Cliente buscarPorId(int id) {
         return Transaccion.consultar("buscar el cliente", con -> {
+            Cliente cliente = null;
             try (PreparedStatement ps = con.prepareStatement(SELECT + "WHERE p.id = ?")) {
                 ps.setInt(1, id);
                 try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next() ? mapear(rs) : null;
+                    if (rs.next()) {
+                        cliente = mapear(rs);
+                    }
                 }
             }
+            if (cliente != null) {
+                cliente.setTelefonos(telefonoDAO.listarPorCliente(con, id));
+            }
+            return cliente;
         });
     }
 
@@ -53,6 +65,11 @@ public class ClienteDAOImpl implements ClienteDAO {
                     lista.add(mapear(rs));
                 }
             }
+            // Una sola consulta para los teléfonos de TODOS los clientes
+            Map<Integer, List<TelefonoCliente>> telefonos = telefonoDAO.listarAgrupados(con);
+            for (Cliente c : lista) {
+                c.setTelefonos(telefonos.getOrDefault(c.getId(), new ArrayList<>()));
+            }
             return lista;
         });
     }
@@ -63,7 +80,7 @@ public class ClienteDAOImpl implements ClienteDAO {
             try (PreparedStatement ps = con.prepareStatement("UPDATE persona SET nombre=?, nit=?, telefono=? WHERE id=?")) {
                 ps.setString(1, c.getNombre());
                 ps.setString(2, c.getNit());
-                ps.setString(3, c.getTelefono());
+                ps.setString(3, c.getTelefonoPrincipal());
                 ps.setInt(4, c.getId());
                 ps.executeUpdate();
             }
@@ -72,6 +89,9 @@ public class ClienteDAOImpl implements ClienteDAO {
                 ps.setInt(2, c.getId());
                 ps.executeUpdate();
             }
+            // Se reemplaza la lista completa: se borran los anteriores y se insertan los actuales
+            telefonoDAO.eliminarPorCliente(con, c.getId());
+            guardarTelefonos(con, c);
             return null;
         });
     }
@@ -79,6 +99,7 @@ public class ClienteDAOImpl implements ClienteDAO {
     @Override
     public void eliminar(int id) {
         Transaccion.ejecutar("eliminar el cliente", con -> {
+            telefonoDAO.eliminarPorCliente(con, id);
             try (PreparedStatement ps = con.prepareStatement("DELETE FROM cliente WHERE id=?")) {
                 ps.setInt(1, id);
                 ps.executeUpdate();
@@ -89,6 +110,13 @@ public class ClienteDAOImpl implements ClienteDAO {
             }
             return null;
         });
+    }
+
+    private void guardarTelefonos(Connection con, Cliente c) throws SQLException {
+        for (TelefonoCliente t : c.getTelefonos()) {
+            t.setIdCliente(c.getId());
+            telefonoDAO.insertar(con, t);
+        }
     }
 
     private Cliente mapear(ResultSet rs) throws SQLException {

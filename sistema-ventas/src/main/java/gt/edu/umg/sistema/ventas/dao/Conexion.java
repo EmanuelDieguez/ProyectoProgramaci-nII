@@ -9,7 +9,7 @@ public final class Conexion {
     private static final String URL = System.getProperty("db.url",
             "jdbc:mysql://localhost:3306/sistema_ventas?useSSL=false&allowPublicKeyRetrieval=true");
     private static final String USUARIO = System.getProperty("db.user", "root");
-    private static final String CLAVE = System.getProperty("db.password", "m6666");
+    private static final String CLAVE = System.getProperty("db.password", "admin");
 
     private Conexion() {}
 
